@@ -2,9 +2,10 @@
 
 This repository extends the [original 3D Gaussian Splatting](https://github.com/graphdeco-inria/gaussian-splatting) by adding functionality to align and merge multiple 3D Gaussian Splatting scenes. The core contribution is a robust registration pipeline that allows precise alignment between two Gaussian Splatting models using keypoint-based registration followed by ICP refinement.
 
-## Setup
 
-### Installation
+## 🆕 3DGS Simple Registration
+
+## Installation
 
 For installation, please follow the same conda environment setup as the original 3D Gaussian Splatting repository:
 
@@ -20,8 +21,6 @@ conda activate gaussian_splatting
 ```
 
 Once the environment is set up, you can use the registration tool provided in this repository.
-
-## 🆕 3DGS Simple Registration
 
 ### Features
 
