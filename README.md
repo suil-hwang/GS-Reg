@@ -2,9 +2,8 @@
 
 This repository extends the [original 3D Gaussian Splatting](https://github.com/graphdeco-inria/gaussian-splatting) by adding functionality to align and merge multiple 3D Gaussian Splatting scenes. The core contribution is a robust registration pipeline that allows precise alignment between two Gaussian Splatting models using keypoint-based registration followed by ICP refinement.
 
-## 🆕 Gaussian Scene Registration Tool
+## 🆕 3DGS Simple Registration
 
-![Registration Example](assets/registration_example.png)
 
 ### Features
 
