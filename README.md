@@ -14,10 +14,7 @@ The `gs-registration.py` script enables the alignment and merging of two pre-tra
 2. **Interactive keypoint selection**: Provides an interface to select at least 3 corresponding points between scenes
 3. **SVD-based initial alignment**: Computes optimal rotation and translation between point sets
 4. **Transformation application**: Applies the computed transformation to all Gaussians in the source scene
-5. **Adaptive ICP refinement**: Uses an iterative closest point algorithm with:
-   - Automatic threshold determination based on scene scale
-   - Gradual threshold reduction for precise alignment
-   - Convergence monitoring via RMSE
+5. **Adaptive ICP refinement**: Uses an iterative closest point algorithm
 6. **Scene merging**: Combines the aligned scenes into a unified Gaussian model
 
 ### Usage
