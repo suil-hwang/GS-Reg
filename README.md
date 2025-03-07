@@ -2,6 +2,25 @@
 
 This repository extends the [original 3D Gaussian Splatting](https://github.com/graphdeco-inria/gaussian-splatting) by adding functionality to align and merge multiple 3D Gaussian Splatting scenes. The core contribution is a robust registration pipeline that allows precise alignment between two Gaussian Splatting models using keypoint-based registration followed by ICP refinement.
 
+## Setup
+
+### Installation
+
+For installation, please follow the same conda environment setup as the original 3D Gaussian Splatting repository:
+
+1. Visit [https://github.com/graphdeco-inria/gaussian-splatting](https://github.com/graphdeco-inria/gaussian-splatting)
+2. Follow their installation instructions to set up the conda environment:
+
+```bash
+# Windows only
+SET DISTUTILS_USE_SDK=1 
+# All platforms
+conda env create --file environment.yml
+conda activate gaussian_splatting
+```
+
+Once the environment is set up, you can use the registration tool provided in this repository.
+
 ## 🆕 3DGS Simple Registration
 
 ### Features
@@ -77,22 +96,3 @@ python gs-registration.py <source_ply> <target_ply> <output_ply> [options]
 # Basic usage with default parameters
 python gs-registration.py ./scene_a.ply ./scene_b.ply ./merged_scene.ply
 ```
-
-## Setup
-
-### Installation
-
-For installation, please follow the same conda environment setup as the original 3D Gaussian Splatting repository:
-
-1. Visit [https://github.com/graphdeco-inria/gaussian-splatting](https://github.com/graphdeco-inria/gaussian-splatting)
-2. Follow their installation instructions to set up the conda environment:
-
-```bash
-# Windows only
-SET DISTUTILS_USE_SDK=1 
-# All platforms
-conda env create --file environment.yml
-conda activate gaussian_splatting
-```
-
-Once the environment is set up, you can use the registration tool provided in this repository.
