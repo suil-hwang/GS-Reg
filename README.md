@@ -31,16 +31,6 @@ python gs-registration.py <source_ply> <target_ply> <output_ply> [options]
 - `target_ply`: Path to the second Gaussian Splatting PLY file (reference model)
 - `output_ply`: Path where the merged result will be saved
 
-#### Optional Arguments:
-- `--align_ground_plane`: Enable automatic ground plane detection and alignment
-- `--multiplier`: Coefficient for ICP threshold setting (default: 0.05)
-- `--icp_method`: ICP alignment method: 'point_to_point' or 'point_to_plane' (default: 'point_to_point')
-- `--max_iterations`: Maximum number of ICP iterations (default: 50)
-- `--tolerance`: RMSE change tolerance for convergence (default: 1e-6)
-- `--threshold_decay`: Rate at which ICP threshold decreases (default: 0.8)
-- `--min_threshold`: Minimum ICP threshold value (default: 0.01)
-- `--source_keypoints`: File to save/load source keypoints (default: source_keypoints.txt)
-- `--target_keypoints`: File to save/load target keypoints (default: target_keypoints.txt)
 
 ### Example
 
