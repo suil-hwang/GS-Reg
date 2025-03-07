@@ -4,7 +4,6 @@ This repository extends the [original 3D Gaussian Splatting](https://github.com/
 
 ## 🆕 3DGS Simple Registration
 
-
 ### Features
 
 The `gs-registration.py` script enables the alignment and merging of two pre-trained 3D Gaussian Splatting models through these key steps:
@@ -15,6 +14,40 @@ The `gs-registration.py` script enables the alignment and merging of two pre-tra
 4. **Transformation application**: Applies the computed transformation to all Gaussians in the source scene
 5. **Adaptive ICP refinement**: Uses an iterative closest point algorithm
 6. **Scene merging**: Combines the aligned scenes into a unified Gaussian model
+
+### Interactive Keypoint Selection
+
+When you run the script, you'll be prompted to select corresponding keypoints in both scenes:
+
+1. The visualization window will open showing the first (source) scene
+2. Use Shift+Left click to select at least 3 keypoints
+3. Press 'Q' to close the window when done
+4. Repeat the process for the second (target) scene
+5. Ensure you select the same corresponding points in both scenes
+
+If keypoint files already exist, they will be loaded automatically. Delete or rename these files if you want to select new keypoints.
+
+Here's an example of the interactive keypoint selection process on two different scenes:
+
+#### Source Scene (House)
+![House Keypoint Selection](assets/house_split.png)
+
+#### Target Scene (Kitchen)
+![Kitchen Keypoint Selection](assets/kitchen_split.png)
+
+Notice the colored spheres in both scenes - these are the corresponding keypoints that need to be selected in both scenes to establish the initial alignment.
+
+### Registration Results
+
+After alignment and merging, the results can be impressive. Below is an example of a successful registration:
+
+#### Merged Result
+![Registration Result](assets/ex_result.png)
+
+#### Ground Truth Reference
+![Ground Truth](assets/gt.png)
+
+The final result closely matches the ground truth, demonstrating the effectiveness of the registration pipeline.
 
 ### Usage
 
@@ -38,48 +71,12 @@ python gs-registration.py <source_ply> <target_ply> <output_ply> [options]
 - `--source_keypoints`: File to save/load source keypoints (default: source_keypoints.txt)
 - `--target_keypoints`: File to save/load target keypoints (default: target_keypoints.txt)
 
-### Example
+#### Example
 
 ```bash
 # Basic usage with default parameters
 python gs-registration.py ./scene_a.ply ./scene_b.ply ./merged_scene.ply
 ```
-
-### Interactive Keypoint Selection
-
-When you run the script, you'll be prompted to select corresponding keypoints in both scenes:
-
-1. The visualization window will open showing the first (source) scene
-2. Use Shift+Left click to select at least 3 keypoints
-3. Press 'Q' to close the window when done
-4. Repeat the process for the second (target) scene
-5. Ensure you select the same corresponding points in both scenes
-
-If keypoint files already exist, they will be loaded automatically. Delete or rename these files if you want to select new keypoints.
-
-## Visual Demonstration
-
-### Interactive Keypoint Selection Process
-
-Here's an example of the interactive keypoint selection process on two different scenes that need to be aligned:
-
-#### Source Scene (House)
-![House Keypoint Selection](assets/house_split.png)
-
-#### Target Scene (Kitchen)
-![Kitchen Keypoint Selection](assets/kitchen_split.png)
-
-Notice the colored spheres in both scenes - these are the corresponding keypoints that need to be selected in both scenes to establish the initial alignment.
-
-### Registration Results
-
-#### Merged Result
-![Registration Result](assets/ex_result.png)
-
-#### Ground Truth Reference
-![Ground Truth](assets/gt.png)
-
-The final result closely matches the ground truth, demonstrating the effectiveness of the registration pipeline.
 
 ## Setup
 
