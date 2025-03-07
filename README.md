@@ -37,9 +37,6 @@ python gs-registration.py <source_ply> <target_ply> <output_ply> [options]
 ```bash
 # Basic usage with default parameters
 python gs-registration.py ./scene_a.ply ./scene_b.ply ./merged_scene.ply
-
-# With ground plane alignment and custom ICP settings
-python gs-registration.py ./scene_a.ply ./scene_b.ply ./merged_scene.ply --align_ground_plane --multiplier 0.03 --icp_method point_to_plane
 ```
 
 ### Interactive Keypoint Selection
