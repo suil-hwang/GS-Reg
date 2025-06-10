@@ -7,8 +7,8 @@ import sys
 import logging
 from scipy.spatial.transform import Rotation
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Configure logging - ERROR level only
+logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class GaussianModelHandler:
     def __init__(self, file_path):
@@ -22,14 +22,12 @@ class GaussianModelHandler:
             if not self.point_cloud.has_points():
                 logging.error(f"Failed to load point cloud or empty point cloud: {self.file_path}")
                 return False
-            logging.info(f"Loaded point cloud with {len(self.point_cloud.points)} points")
             return True
         except Exception as e:
             logging.error(f"Error loading point cloud: {str(e)}")
             return False
 
     def convert_to_point_cloud(self):
-        # This function assumes the model is already loaded as a point cloud
         return self.point_cloud
 
     def apply_transformation(self, transformation):
@@ -39,7 +37,6 @@ class GaussianModelHandler:
         
         try:
             self.point_cloud.transform(transformation)
-            logging.info("Transformation applied successfully")
             return True
         except Exception as e:
             logging.error(f"Error applying transformation: {str(e)}")
@@ -52,7 +49,6 @@ class GaussianModelHandler:
         
         try:
             o3d.io.write_point_cloud(output_path, self.point_cloud)
-            logging.info(f"Point cloud saved to {output_path}")
             return True
         except Exception as e:
             logging.error(f"Error saving point cloud: {str(e)}")
@@ -99,9 +95,7 @@ class KeypointSelector:
         if picked_indices:
             points = np.asarray(self.gaussian_model_handler.point_cloud.points)
             self.keypoints = [points[idx] for idx in picked_indices]
-            logging.info(f"Selected {len(self.keypoints)} keypoints")
-        else:
-            logging.warning("No keypoints selected")
+            print(f"Selected {len(self.keypoints)} keypoints")
             
         return self.keypoints
 
@@ -117,7 +111,7 @@ class ICPAligner:
 
     def estimate_initial_threshold(self, point_cloud):
         if not point_cloud.has_points():
-            return 0.05  # Default threshold
+            return 0.05
             
         # Get point cloud bounds
         points = np.asarray(point_cloud.points)
@@ -129,13 +123,12 @@ class ICPAligner:
         
         # Return threshold as a proportion of diagonal
         threshold = diagonal * self.multiplier
-        logging.info(f"Estimated initial threshold: {threshold:.6f}")
         return threshold
 
     def perform_icp(self, source_pcd, target_pcd, initial_transformation=np.eye(4)):
         if not source_pcd.has_points() or not target_pcd.has_points():
             logging.error("Source or target point cloud is empty")
-            return np.eye(4), np.eye(6), 0.0, float('inf')
+            return np.eye(4), 0.0, float('inf')
         
         # Make deep copies to avoid modifying the originals
         source = copy.deepcopy(source_pcd)
@@ -157,10 +150,8 @@ class ICPAligner:
         best_fitness = 0
         best_rmse = float('inf')
         best_transformation = np.eye(4)
-        best_information = np.eye(6)
         
-        # Initialize progress
-        logging.info("Starting ICP alignment...")
+        print("Performing ICP alignment...")
         
         # Loop until threshold becomes too small
         iteration = 0
@@ -184,7 +175,6 @@ class ICPAligner:
                 best_fitness = result.fitness
                 best_rmse = result.inlier_rmse
                 best_transformation = result.transformation
-                best_information = result.information
                 
                 # Apply the transformation for the next iteration
                 source.transform(result.transformation)
@@ -192,15 +182,12 @@ class ICPAligner:
             # Reduce threshold for next iteration
             current_threshold *= self.threshold_decay
             iteration += 1
-            
-            # Log progress
-            logging.info(f"ICP Iteration {iteration}: Threshold={current_threshold:.6f}, Fitness={result.fitness:.6f}, RMSE={result.inlier_rmse:.6f}")
         
         # Compose the final transformation (initial * best)
         final_transformation = np.matmul(best_transformation, initial_transformation)
         
-        logging.info(f"ICP completed with fitness={best_fitness:.6f}, RMSE={best_rmse:.6f}")
-        return final_transformation, best_information, best_fitness, best_rmse
+        print(f"ICP completed: fitness={best_fitness:.4f}, RMSE={best_rmse:.4f}")
+        return final_transformation, best_fitness, best_rmse
 
 class PLYMerger:
     @staticmethod
@@ -249,7 +236,6 @@ class PLYMerger:
             
             # Save merged point cloud
             o3d.io.write_point_cloud(output_file, merged_pcd)
-            logging.info(f"Merged point cloud saved to {output_file}")
             return True
             
         except Exception as e:
@@ -259,48 +245,16 @@ class PLYMerger:
 class AlignmentController:
     def __init__(self, source_path, target_path, output_path, align_ground_plane=True, 
                  multiplier=0.05, icp_method='point_to_point', max_iterations=50, 
-                 tolerance=1e-6, threshold_decay=0.8, min_threshold=0.01,
-                 source_keypoints_file='source_keypoints.txt', target_keypoints_file='target_keypoints.txt'):
+                 tolerance=1e-6, threshold_decay=0.8, min_threshold=0.01):
         self.source_path = source_path
         self.target_path = target_path
         self.output_path = output_path
         self.align_ground_plane = align_ground_plane
-        self.source_keypoints_file = source_keypoints_file
-        self.target_keypoints_file = target_keypoints_file
         
         # Initialize handlers and aligners
         self.source_handler = GaussianModelHandler(source_path)
         self.target_handler = GaussianModelHandler(target_path)
         self.icp_aligner = ICPAligner(multiplier, icp_method, max_iterations, tolerance, threshold_decay, min_threshold)
-
-    def save_keypoints(self, keypoints, file_path):
-        try:
-            with open(file_path, 'w') as f:
-                for point in keypoints:
-                    f.write(f"{point[0]} {point[1]} {point[2]}\n")
-            logging.info(f"Keypoints saved to {file_path}")
-            return True
-        except Exception as e:
-            logging.error(f"Error saving keypoints: {str(e)}")
-            return False
-
-    def load_keypoints(self, file_path):
-        keypoints = []
-        try:
-            if os.path.exists(file_path):
-                with open(file_path, 'r') as f:
-                    for line in f:
-                        values = line.strip().split()
-                        if len(values) >= 3:
-                            point = [float(values[0]), float(values[1]), float(values[2])]
-                            keypoints.append(point)
-                logging.info(f"Loaded {len(keypoints)} keypoints from {file_path}")
-            else:
-                logging.warning(f"Keypoint file not found: {file_path}")
-        except Exception as e:
-            logging.error(f"Error loading keypoints: {str(e)}")
-        
-        return keypoints
 
     def detect_and_align_ground_plane(self):
         if not self.source_handler.load_gaussian_model() or not self.target_handler.load_gaussian_model():
@@ -320,10 +274,8 @@ class AlignmentController:
             
             # Compute the combined transformation to align source to target
             combined_transform = np.matmul(np.linalg.inv(target_transform), source_transform)
-            logging.info("Ground plane alignment computed successfully")
             return combined_transform
         else:
-            logging.warning("Ground plane could not be detected, using identity transformation")
             return np.eye(4)
 
     def perform_icp_alignment(self):
@@ -331,27 +283,26 @@ class AlignmentController:
             return np.eye(4)
             
         # Perform ICP alignment
-        transformation, _, fitness, rmse = self.icp_aligner.perform_icp(
+        transformation, fitness, rmse = self.icp_aligner.perform_icp(
             self.source_handler.point_cloud, 
             self.target_handler.point_cloud
         )
         
-        logging.info(f"ICP alignment completed with fitness={fitness:.4f}, RMSE={rmse:.4f}")
         return transformation
 
     def compute_keypoint_alignment(self, keypoints_source, keypoints_target):
         if len(keypoints_source) < 3 or len(keypoints_target) < 3:
-            logging.warning("Not enough keypoints for alignment (need at least 3)")
+            print("Warning: Not enough keypoints for alignment (need at least 3)")
             return np.eye(4)
             
         if len(keypoints_source) != len(keypoints_target):
-            logging.warning(f"Keypoint count mismatch: source={len(keypoints_source)}, target={len(keypoints_target)}")
+            print(f"Warning: Keypoint count mismatch: source={len(keypoints_source)}, target={len(keypoints_target)}")
             min_points = min(len(keypoints_source), len(keypoints_target))
             keypoints_source = keypoints_source[:min_points]
             keypoints_target = keypoints_target[:min_points]
         
         transformation = compute_keypoint_alignment(keypoints_source, keypoints_target)
-        logging.info(f"Keypoint alignment computed with {len(keypoints_source)} point pairs")
+        print(f"Keypoint alignment computed with {len(keypoints_source)} point pairs")
         return transformation
 
     def save_and_merge(self, temp_source_ply, temp_target_ply, merged_ply):
@@ -364,7 +315,7 @@ class AlignmentController:
         return result
 
     def run(self):
-        logging.info("Starting alignment process")
+        print("\nStarting registration process...")
         
         # Step 1: Load models
         if not self.source_handler.load_gaussian_model() or not self.target_handler.load_gaussian_model():
@@ -376,41 +327,42 @@ class AlignmentController:
         
         # Step 2: Ground plane alignment (if enabled)
         if self.align_ground_plane:
-            logging.info("Performing ground plane alignment")
+            print("Performing ground plane alignment...")
             ground_transform = self.detect_and_align_ground_plane()
             self.source_handler.apply_transformation(ground_transform)
             transformation = ground_transform
         
-        # Step 3: Check for existing keypoints or collect new ones
-        source_keypoints = self.load_keypoints(self.source_keypoints_file)
-        target_keypoints = self.load_keypoints(self.target_keypoints_file)
+        # Step 3: Collect keypoints
+        print("\nStarting interactive keypoint selection...")
         
-        if not source_keypoints or not target_keypoints:
-            logging.info("No pre-existing keypoints found, starting keypoint selection")
-            
-            # Collect keypoints for source
-            logging.info("Select keypoints for SOURCE model")
-            source_keypoint_selector = KeypointSelector(self.source_handler)
-            source_keypoints = source_keypoint_selector.run()
-            self.save_keypoints(source_keypoints, self.source_keypoints_file)
-            
-            # Collect keypoints for target
-            logging.info("Select keypoints for TARGET model")
-            target_keypoint_selector = KeypointSelector(self.target_handler)
-            target_keypoints = target_keypoint_selector.run()
-            self.save_keypoints(target_keypoints, self.target_keypoints_file)
+        # Collect keypoints for source
+        print("\nSelect keypoints for SOURCE model")
+        source_keypoint_selector = KeypointSelector(self.source_handler)
+        source_keypoints = source_keypoint_selector.run()
+        
+        if not source_keypoints:
+            print("Error: No keypoints selected for source model")
+            return False
+        
+        # Collect keypoints for target
+        print("\nSelect keypoints for TARGET model")
+        target_keypoint_selector = KeypointSelector(self.target_handler)
+        target_keypoints = target_keypoint_selector.run()
+        
+        if not target_keypoints:
+            print("Error: No keypoints selected for target model")
+            return False
         
         # Step 4: Keypoint-based alignment
-        if source_keypoints and target_keypoints:
-            logging.info("Performing keypoint-based alignment")
-            keypoint_transform = self.compute_keypoint_alignment(source_keypoints, target_keypoints)
-            self.source_handler.apply_transformation(keypoint_transform)
-            
-            # Update cumulative transformation
-            transformation = np.matmul(keypoint_transform, transformation)
+        print("\nPerforming keypoint-based alignment...")
+        keypoint_transform = self.compute_keypoint_alignment(source_keypoints, target_keypoints)
+        self.source_handler.apply_transformation(keypoint_transform)
+        
+        # Update cumulative transformation
+        transformation = np.matmul(keypoint_transform, transformation)
         
         # Step 5: Fine-tune with ICP
-        logging.info("Fine-tuning alignment with ICP")
+        print("\nFine-tuning with ICP...")
         icp_transform = self.perform_icp_alignment()
         self.source_handler.apply_transformation(icp_transform)
         
@@ -427,11 +379,11 @@ class AlignmentController:
         temp_source_ply = create_temp_ply("source_aligned")
         temp_target_ply = create_temp_ply("target")
         
-        logging.info("Saving and merging point clouds")
+        print("\nSaving and merging point clouds...")
         self.save_and_merge(temp_source_ply, temp_target_ply, self.output_path)
         
-        logging.info(f"Alignment completed. Final transformation matrix:\n{transformation}")
-        logging.info(f"Results saved to {self.output_path}")
+        print(f"\nRegistration completed successfully!")
+        print(f"Output saved to: {self.output_path}")
         
         return True
 
@@ -449,10 +401,8 @@ def detect_ground_plane_ransac(point_cloud, distance_threshold=0.05, ransac_n=20
         )
         
         if len(inliers) > 100:  # Ensure we have enough inliers for a valid plane
-            logging.info(f"Ground plane detected with {len(inliers)} inliers")
             return plane_model
         else:
-            logging.warning(f"Too few inliers for ground plane: {len(inliers)}")
             return None
     except Exception as e:
         logging.error(f"Error detecting ground plane: {str(e)}")
