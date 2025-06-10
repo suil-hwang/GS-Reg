@@ -1,4 +1,4 @@
-# KeyGS: Keypoint-Guided Registration for 3D Gaussian Splatting
+# GS-Reg: Interactive Registration for 3D Gaussian Splatting
 
 An interactive registration framework that enables precise alignment and merging of multiple 3D Gaussian Splatting scenes through user-guided keypoint correspondence and ICP refinement.
 
