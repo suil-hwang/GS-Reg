@@ -54,18 +54,6 @@ if __name__ == "__main__":
         default=0.01,
         help="Minimum threshold value (default: 0.01)"
     )
-    parser.add_argument(
-        "--source_keypoints",
-        type=str,
-        default="source_keypoints.txt",
-        help="Source keypoints file path (default: source_keypoints.txt)"
-    )
-    parser.add_argument(
-        "--target_keypoints",
-        type=str,
-        default="target_keypoints.txt",
-        help="Target keypoints file path (default: target_keypoints.txt)"
-    )
     args = parser.parse_args()
 
     controller = AlignmentController(
@@ -78,13 +66,7 @@ if __name__ == "__main__":
         max_iterations=args.max_iterations,
         tolerance=args.tolerance,
         threshold_decay=args.threshold_decay,
-        min_threshold=args.min_threshold,
-        source_keypoints_file=args.source_keypoints,
-        target_keypoints_file=args.target_keypoints
+        min_threshold=args.min_threshold
     )
 
     controller.run()
-
-# Usage examples
-# python gs-registration.py <source_ply> <target_ply> <output_ply> 
-
