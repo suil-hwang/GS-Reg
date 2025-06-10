@@ -64,15 +64,6 @@ GS-Reg achieves accurate alignment through the combination of manual corresponde
 #### Ground Truth Reference
 ![Ground Truth](assets/gt.png)
 
-## Example Command
-
-```bash
-# Basic registration
-python gs-registration.py scene1.ply scene2.ply merged.ply
-
-# With ground plane alignment
-python gs-registration.py scene1.ply scene2.ply merged.ply --align_ground_plane
-```
 
 ## Citation
 
