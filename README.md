@@ -1,4 +1,4 @@
-# 3D Gaussian Splatting Registration using Interactive Keypoints and ICP
+# KeyGS: Keypoint-Guided Registration for 3D Gaussian Splatting
 
 This repository extends the [original 3D Gaussian Splatting](https://github.com/graphdeco-inria/gaussian-splatting) by implementing a simple method to align and merge multiple 3D Gaussian Splatting scenes. The implementation provides an interactive keypoint selection interface that allows users to easily establish correspondences between scenes, which then serves as the foundation for ICP (Iterative Closest Point) registration to achieve precise alignment.
 
