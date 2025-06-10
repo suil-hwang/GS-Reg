@@ -16,7 +16,7 @@ GS-Reg uses the same environment as the original 3D Gaussian Splatting:
 
 ```bash
 conda env create --file environment.yml
-conda activate gaussian_splatting
+conda activate gs-reg
 ```
 
 ## Usage
