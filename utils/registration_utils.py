@@ -20,6 +20,10 @@ DEFAULT_BG_COLOR = [0.1, 0.1, 0.1]
 MIN_KEYPOINTS = 3
 MIN_PLANE_INLIERS = 100
 EPSILON = 1e-6
+OUTLIER_PERCENTILE = 95  # Use 95th percentile to exclude outliers
+MIN_POINT_SIZE = 0.5
+MAX_POINT_SIZE = 10.0
+POINT_SIZE_RATIO = 0.003  # Point size as ratio of scene size
 
 class ICPMethod(Enum):
     """ICP method types"""
@@ -43,6 +47,7 @@ class PointCloudProcessor:
         self.file_path = file_path
         self._point_cloud: Optional[o3d.geometry.PointCloud] = None
         self._bounds_cache: Optional[Tuple[np.ndarray, np.ndarray]] = None
+        self._effective_size_cache: Optional[float] = None
     
     @property
     def point_cloud(self) -> Optional[o3d.geometry.PointCloud]:
@@ -78,6 +83,7 @@ class PointCloudProcessor:
         if self._point_cloud is not None:
             self._point_cloud.transform(transformation)
             self._bounds_cache = None  # Invalidate cache
+            self._effective_size_cache = None
     
     @lru_cache(maxsize=1)
     def get_bounds(self) -> Tuple[np.ndarray, np.ndarray]:
@@ -87,18 +93,67 @@ class PointCloudProcessor:
         
         points = np.asarray(self._point_cloud.points)
         return np.min(points, axis=0), np.max(points, axis=0)
-
-class InteractiveKeypointSelector:
-    """Interactive keypoint selection with Open3D"""
     
-    def __init__(self, point_size: float = DEFAULT_POINT_SIZE):
-        self.point_size = point_size
+    def get_effective_size(self, percentile: float = OUTLIER_PERCENTILE) -> float:
+        """Calculate effective scene size excluding outliers"""
+        if self._effective_size_cache is not None:
+            return self._effective_size_cache
+        
+        if self._point_cloud is None or not self._point_cloud.has_points():
+            return 0.0
+        
+        points = np.asarray(self._point_cloud.points)
+        
+        # Calculate centroid
+        centroid = np.mean(points, axis=0)
+        
+        # Calculate distances from centroid
+        distances = np.linalg.norm(points - centroid, axis=1)
+        
+        # Use percentile to exclude outliers
+        effective_radius = np.percentile(distances, percentile)
+        
+        # Cache the result
+        self._effective_size_cache = effective_radius * 2  # diameter
+        
+        return self._effective_size_cache
+    
+    def remove_statistical_outliers(self, nb_neighbors: int = 20, 
+                                   std_ratio: float = 2.0) -> 'PointCloudProcessor':
+        """Remove statistical outliers from point cloud"""
+        if self._point_cloud is None or not self._point_cloud.has_points():
+            return self
+        
+        # Statistical outlier removal
+        cleaned_cloud, _ = self._point_cloud.remove_statistical_outlier(
+            nb_neighbors=nb_neighbors,
+            std_ratio=std_ratio
+        )
+        
+        self._point_cloud = cleaned_cloud
+        self._bounds_cache = None
+        self._effective_size_cache = None
+        
+        return self
+
+class AdaptiveKeypointSelector:
+    """Interactive keypoint selection with adaptive point size"""
+    
+    def __init__(self, base_point_size: float = DEFAULT_POINT_SIZE):
+        self.base_point_size = base_point_size
     
     def select_keypoints(self, processor: PointCloudProcessor, 
                         window_name: str = "Select Keypoints") -> List[np.ndarray]:
-        """Interactive keypoint selection"""
+        """Interactive keypoint selection with adaptive sizing"""
         if processor.point_cloud is None:
             return []
+        
+        # Calculate adaptive point size based on scene size
+        scene_size = processor.get_effective_size()
+        adaptive_point_size = self._calculate_adaptive_point_size(scene_size)
+        
+        print(f"📏 Scene effective size: {scene_size:.3f}")
+        print(f"🎯 Adaptive keypoint size: {adaptive_point_size:.2f}")
         
         vis = o3d.visualization.VisualizerWithEditing()
         vis.create_window(window_name=f"{window_name} (Press 'Q' to exit)", 
@@ -106,11 +161,14 @@ class InteractiveKeypointSelector:
         
         # Configure visualization
         opt = vis.get_render_option()
-        opt.point_size = self.point_size
+        opt.point_size = adaptive_point_size
         opt.background_color = np.array(DEFAULT_BG_COLOR)
         
         vis.add_geometry(processor.point_cloud)
-        vis.get_view_control().set_zoom(0.8)
+        
+        # Set appropriate zoom based on scene size
+        view_control = vis.get_view_control()
+        view_control.set_zoom(0.8)
         
         # Show instructions
         self._print_instructions()
@@ -128,13 +186,25 @@ class InteractiveKeypointSelector:
             return keypoints.tolist()
         return []
     
+    def _calculate_adaptive_point_size(self, scene_size: float) -> float:
+        """Calculate point size based on scene dimensions"""
+        if scene_size <= 0:
+            return self.base_point_size
+        
+        # Calculate point size as a ratio of scene size
+        adaptive_size = scene_size * POINT_SIZE_RATIO
+        
+        # Clamp to reasonable range
+        adaptive_size = np.clip(adaptive_size, MIN_POINT_SIZE, MAX_POINT_SIZE)
+        
+        return adaptive_size
+    
     @staticmethod
     def _print_instructions():
         print("\n" + "="*30)
         print("KEYPOINT SELECTION")
         print("="*30)
         print("• Shift+Left click: Select points")
-        print("• Shift+Right click: Deselect points")
         print("• Q: Finish selection")
         print("="*30 + "\n")
 
@@ -166,7 +236,7 @@ class OptimizedICPAligner:
             self._estimate_normals(source_pcd, target_pcd)
         
         # Adaptive ICP
-        transformation = self._adaptive_icp(source_pcd, target_pcd)
+        transformation = self._adaptive_icp(source_pcd, target_pcd, target.get_effective_size())
         
         # Compose final transformation
         final_transform = transformation @ initial_transform
@@ -187,16 +257,11 @@ class OptimizedICPAligner:
             source.estimate_normals(search_param=search_param)
     
     def _adaptive_icp(self, source: o3d.geometry.PointCloud, 
-                     target: o3d.geometry.PointCloud) -> np.ndarray:
+                     target: o3d.geometry.PointCloud,
+                     effective_size: float) -> np.ndarray:
         """Perform adaptive ICP with decreasing threshold"""
-        # Calculate initial threshold
-        _, target_max = PointCloudProcessor("").get_bounds()
-        _, source_max = PointCloudProcessor("").get_bounds()
-        
-        # Use target bounds for threshold estimation
-        target_bounds = target.get_max_bound() - target.get_min_bound()
-        diagonal = np.linalg.norm(target_bounds)
-        current_threshold = diagonal * self.config.multiplier
+        # Use effective size for threshold calculation
+        current_threshold = effective_size * self.config.multiplier
         
         best_result = {
             'transformation': np.eye(4),
@@ -256,13 +321,15 @@ class RegistrationPipeline:
     
     def __init__(self, source_path: str, target_path: str, output_path: str,
                  icp_config: Optional[ICPConfig] = None,
-                 enable_ground_plane: bool = False):
+                 enable_ground_plane: bool = False,
+                 remove_outliers: bool = True):
         self.source = PointCloudProcessor(source_path)
         self.target = PointCloudProcessor(target_path)
         self.output_path = output_path
         self.icp_config = icp_config or ICPConfig()
         self.enable_ground_plane = enable_ground_plane
-        self.keypoint_selector = InteractiveKeypointSelector()
+        self.remove_outliers = remove_outliers
+        self.keypoint_selector = AdaptiveKeypointSelector()
         self.icp_aligner = OptimizedICPAligner(self.icp_config)
     
     def run(self) -> bool:
@@ -273,6 +340,12 @@ class RegistrationPipeline:
         if not self._load_point_clouds():
             return False
         
+        # Optional outlier removal
+        if self.remove_outliers:
+            print("\n🧹 Removing outliers...")
+            self.source.remove_statistical_outliers()
+            self.target.remove_statistical_outliers()
+        
         cumulative_transform = np.eye(4)
         
         # Optional ground plane alignment
@@ -282,8 +355,8 @@ class RegistrationPipeline:
             self.source.transform(ground_transform)
             cumulative_transform = ground_transform @ cumulative_transform
         
-        # Interactive keypoint selection
-        print("\n🎯 Interactive Keypoint Selection")
+        # Interactive keypoint selection with adaptive sizing
+        print("\n🎯 Interactive Keypoint Selection (Adaptive Sizing)")
         
         print("\n[1/2] SOURCE model:")
         source_keypoints = self.keypoint_selector.select_keypoints(
@@ -485,7 +558,8 @@ class AlignmentController:
         self.pipeline = RegistrationPipeline(
             source_path, target_path, output_path,
             icp_config=config,
-            enable_ground_plane=kwargs.get('align_ground_plane', False)
+            enable_ground_plane=kwargs.get('align_ground_plane', False),
+            remove_outliers=True  # Enable outlier removal by default
         )
     
     def run(self):
