@@ -93,7 +93,7 @@ If you find this work useful, please consider citing:
   title={KeyGS: Keypoint-Guided Registration for 3D Gaussian Splatting},
   author={Suil Hwang},
   year={2024},
-  url={https://github.com/yourusername/keygs}
+  url={https://github.com/suil-hwang/KeyGS}
 }
 ```
 
