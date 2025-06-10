@@ -1,97 +1,102 @@
 # KeyGS: Keypoint-Guided Registration for 3D Gaussian Splatting
 
-This repository extends the [original 3D Gaussian Splatting](https://github.com/graphdeco-inria/gaussian-splatting) by implementing a simple method to align and merge multiple 3D Gaussian Splatting scenes. The implementation provides an interactive keypoint selection interface that allows users to easily establish correspondences between scenes, which then serves as the foundation for ICP (Iterative Closest Point) registration to achieve precise alignment.
+An interactive registration framework that enables precise alignment and merging of multiple 3D Gaussian Splatting scenes through user-guided keypoint correspondence and ICP refinement.
 
+## Overview
 
-## 🆕 3DGS Simple Registration
+KeyGS extends [3D Gaussian Splatting](https://github.com/graphdeco-inria/gaussian-splatting) with a semi-automatic registration pipeline that allows users to:
+
+- Interactively select corresponding keypoints between scenes
+- Automatically compute optimal alignment using SVD and ICP
+- Merge multiple 3DGS reconstructions into a unified scene
 
 ## Installation
 
-For installation, please follow the same conda environment setup as the original 3D Gaussian Splatting repository:
-
-1. Visit [https://github.com/graphdeco-inria/gaussian-splatting](https://github.com/graphdeco-inria/gaussian-splatting)
-2. Follow their installation instructions to set up the conda environment:
+KeyGS uses the same environment as the original 3D Gaussian Splatting:
 
 ```bash
 # Windows only
-SET DISTUTILS_USE_SDK=1 
-# All platforms
+SET DISTUTILS_USE_SDK=1
+# Create conda environment
 conda env create --file environment.yml
 conda activate gaussian_splatting
 ```
 
-Once the environment is set up, you can use the registration tool provided in this repository.
+## Quick Start
 
-### Features
+```bash
+# Basic registration
+python gs-registration.py source.ply target.ply output.ply
 
-The `gs-registration.py` script enables the alignment and merging of two pre-trained 3D Gaussian Splatting models through these key steps:
+# With ground plane alignment
+python gs-registration.py source.ply target.ply output.ply --align_ground_plane
+```
 
-1. **Loading pre-trained scenes**: Imports two separate Gaussian Splatting scenes (exported as PLY files)
-2. **Interactive keypoint selection**: Provides an interface to select at least 3 corresponding points between scenes
-3. **SVD-based initial alignment**: Computes optimal rotation and translation between point sets
-4. **Transformation application**: Applies the computed transformation to all Gaussians in the source scene
-5. **Adaptive ICP refinement**: Uses an iterative closest point algorithm
-6. **Scene merging**: Combines the aligned scenes into a unified Gaussian model
+## Method
 
-### Interactive Keypoint Selection
+### 1. Interactive Keypoint Selection
 
-When you run the script, you'll be prompted to select corresponding keypoints in both scenes:
+Select at least 3 corresponding points between scenes using our intuitive interface:
 
-1. The visualization window will open showing the first (source) scene
-2. Use Shift+Left click to select at least 3 keypoints
-3. Press 'Q' to close the window when done
-4. Repeat the process for the second (target) scene
-5. Ensure you select the same corresponding points in both scenes
-
-If keypoint files already exist, they will be loaded automatically. Delete or rename these files if you want to select new keypoints.
-
-Here's an example of the interactive keypoint selection process on two different scenes:
+- **Shift + Left Click**: Select keypoints
+- **Q**: Finish selection
 
 #### Source Scene (House)
+
 ![House Keypoint Selection](assets/house_split.png)
 
 #### Target Scene (Kitchen)
+
 ![Kitchen Keypoint Selection](assets/kitchen_split.png)
 
-Notice the colored spheres in both scenes - these are the corresponding keypoints that need to be selected in both scenes to establish the initial alignment.
+The colored spheres indicate selected correspondence points.
 
-### Registration Results
+### 2. Automatic Alignment
 
-After alignment and merging, the results can be impressive. Below is an example of a successful registration:
+KeyGS performs:
+
+1. **SVD-based initial alignment** from keypoint correspondences
+2. **Adaptive ICP refinement** for precise registration
+3. **Optional ground plane alignment** for indoor scenes
+
+### Results
+
+The registration pipeline produces accurate alignments:
 
 #### Merged Result
+
 ![Registration Result](assets/ex_result.png)
 
 #### Ground Truth Reference
+
 ![Ground Truth](assets/gt.png)
 
-The final result closely matches the ground truth, demonstrating the effectiveness of the registration pipeline.
+## Advanced Usage
 
-### Usage
+### Command Line Options
 
-```bash
-python gs-registration.py <source_ply> <target_ply> <output_ply> [options]
+| Parameter              | Description                                       | Default                |
+| ---------------------- | ------------------------------------------------- | ---------------------- |
+| `--align_ground_plane` | Enable ground plane detection                     | False                  |
+| `--icp_method`         | ICP variant: `point_to_point` or `point_to_plane` | `point_to_point`       |
+| `--max_iterations`     | Maximum ICP iterations                            | 50                     |
+| `--multiplier`         | ICP threshold coefficient                         | 0.05                   |
+| `--source_keypoints`   | Source keypoints file                             | `source_keypoints.txt` |
+| `--target_keypoints`   | Target keypoints file                             | `target_keypoints.txt` |
+
+## Citation
+
+If you find this work useful, please consider citing:
+
+```bibtex
+@software{keygs2024,
+  title={KeyGS: Keypoint-Guided Registration for 3D Gaussian Splatting},
+  author={Suil Hwang},
+  year={2024},
+  url={https://github.com/yourusername/keygs}
+}
 ```
 
-#### Required Arguments:
-- `source_ply`: Path to the first Gaussian Splatting PLY file (will be transformed)
-- `target_ply`: Path to the second Gaussian Splatting PLY file (reference model)
-- `output_ply`: Path where the merged result will be saved
+## Acknowledgments
 
-#### Optional Arguments:
-- `--align_ground_plane`: Enable automatic ground plane detection and alignment
-- `--multiplier`: Coefficient for ICP threshold setting (default: 0.05)
-- `--icp_method`: ICP alignment method: 'point_to_point' or 'point_to_plane' (default: 'point_to_point')
-- `--max_iterations`: Maximum number of ICP iterations (default: 50)
-- `--tolerance`: RMSE change tolerance for convergence (default: 1e-6)
-- `--threshold_decay`: Rate at which ICP threshold decreases (default: 0.8)
-- `--min_threshold`: Minimum ICP threshold value (default: 0.01)
-- `--source_keypoints`: File to save/load source keypoints (default: source_keypoints.txt)
-- `--target_keypoints`: File to save/load target keypoints (default: target_keypoints.txt)
-
-#### Example
-
-```bash
-# Basic usage with default parameters
-python gs-registration.py ./scene_a.ply ./scene_b.ply ./merged_scene.ply
-```
+This project builds upon [3D Gaussian Splatting](https://github.com/graphdeco-inria/gaussian-splatting). We thank the authors for their excellent work.
