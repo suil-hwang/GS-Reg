@@ -80,8 +80,8 @@ If you find this work useful, please consider citing:
 ```bibtex
 @misc{gsreg2024,
   title={GS-Reg: Interactive Registration for 3D Gaussian Splatting},
-  author={Your Name},
+  author={Suil Hwang},
   year={2024},
-  url={https://github.com/yourusername/gs-reg}
+  url={https://github.com/suil-hwang/gs-reg}
 }
 ```
