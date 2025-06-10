@@ -1,4 +1,4 @@
-name: gaussian_splatting
+name: gs-reg
 channels:
   - pytorch
   - nvidia
